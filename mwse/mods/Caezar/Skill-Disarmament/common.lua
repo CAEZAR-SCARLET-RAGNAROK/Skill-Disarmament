@@ -1,24 +1,36 @@
+local logger = require("logging.logger")
 local config = require("Caezar.Skill-Disarmament.config")
-
 
 local this = {}
 
 ----------------------------------------
 
 this.mod = "Skill-Disarmament"
-this.version = "0.19"
+this.version = "0.19.3"
 
-this.Skill = nil
-this.skill = {}
-this.skill.module = require("OtherSkills.skillModule")
-this.skill.id = "Caezar:Disarmament"
+this.skill = nil
+this.skillModule = include("OtherSkills.skillModule")
+this.skillId = "Caezar:Disarmament"
+
+this.conlog = logger.new{
+    name = this.mod,
+    logLevel = "INFO",
+    logToConsole = true,
+    includeTimestamp = true,
+}
+this.log = logger.new{
+    name = this.mod,
+    logLevel = "DEBUG",
+    logToConsole = false,
+    includeTimestamp = false,
+}
 
 ----------------------------------------
 this.__yesno = {
     [true] = "Yes",
     [false] = "No",
 }
-this.__yesno_playerattacking = {
+this.__yesno_attacking = {
     [true] = "attacking",
     [false] = "defending",
 }
@@ -48,26 +60,6 @@ this.weaponType = {
 }
 
 this.weaponClass = {
-    ["shortBladeOneHand"]   = "shortBlade",
-    ["longBladeOneHand"]    = "longBlade",
-    ["longBladeTwoClose"]   = "longBlade",
-    ["bluntOneHand"]        = "bluntWeapon",
-    ["bluntTwoClose"]       = "bluntWeapon",
-    ["bluntTwoWide"]        = "bluntWeapon",
-    ["spearTwoWide"]        = "spear",
-    ["axeOneHand"]          = "axe",
-    ["axeTwoHand"]          = "axe",
-    ["marksmanBow"]         = "marksman",
-    ["marksmanCrossbow"]    = "marksman",
-    ["marksmanThrown"]      = "marksman",
-    ["arrow"]               = "marksman",
-    ["bolt"]                = "marksman",
-    ["handToHand"]          = "fists",
-}
-
-----------------------------------------
-
-this.skillMappings = {
     [tes3.weaponType.shortBladeOneHand] = "shortBlade",
     [tes3.weaponType.longBladeOneHand]  = "longBlade",
     [tes3.weaponType.longBladeTwoClose] = "longBlade",
@@ -82,29 +74,14 @@ this.skillMappings = {
     [tes3.weaponType.marksmanThrown]    = "marksman",
     [tes3.weaponType.arrow]             = "marksman",
     [tes3.weaponType.bolt]              = "marksman",
-    [this.weaponType.handToHand]        = "fists",
+    [this.weaponType.handToHand]        = "fist",
 }
--- this.skillMappingsExtended = {
-    -- [this.weaponType.shortBladeOneHand] = "shortBladeOneHand",
-    -- [this.weaponType.longBladeOneHand]  = "longBladeOneHand",
-    -- [this.weaponType.longBladeTwoClose] = "longBladeTwoClose",
-    -- [this.weaponType.bluntOneHand]      = "bluntOneHand",
-    -- [this.weaponType.bluntTwoClose]     = "bluntTwoClose",
-    -- [this.weaponType.bluntTwoWide]      = "bluntTwoWide",
-    -- [this.weaponType.spearTwoWide]      = "spearTwoWide",
-    -- [this.weaponType.axeOneHand]        = "axeOneHand",
-    -- [this.weaponType.axeTwoHand]        = "axeTwoHand",
-    -- [this.weaponType.marksmanBow]       = "marksmanBow",
-    -- [this.weaponType.marksmanCrossbow]  = "marksmanCrossbow",
-    -- [this.weaponType.marksmanThrown]    = "marksmanThrown",
-    -- [this.weaponType.arrow]             = "arrow",
-    -- [this.weaponType.bolt]              = "bolt",
-    -- [this.weaponType.handToHand]        = "handToHand",
--- }
+
+this.skillMappings = this.weaponClass
+
 
 ----------------------------------------
-
-this.weaponChanceModifiers = { --[[
+--[[
     Weapon types' extra chance to be disarmed.
 These are additional chance modifiers as percentages
 since these are used in multiplication operations
@@ -117,8 +94,9 @@ the actor's effective protection is 23.75
 
 a range of +/- 7% should be balanced enough
 ]]--
+this.weaponChanceModifiers = {
     [this.weaponType.shortBladeOneHand] = -5.5,
-    [this.weaponType.longBladeOneHand] = 0.01,
+    [this.weaponType.longBladeOneHand] = 0.0,
     [this.weaponType.longBladeTwoClose] = 0.5,
     [this.weaponType.bluntOneHand] = 2.0,
     [this.weaponType.bluntTwoClose] = 2.0,
@@ -129,47 +107,33 @@ a range of +/- 7% should be balanced enough
     [this.weaponType.marksmanBow] = -7.0,
     [this.weaponType.marksmanCrossbow] = 7.0,
     [this.weaponType.marksmanThrown] = -6.5,
-    [this.weaponType.arrow] = 0.01,
-    [this.weaponType.bolt] = 0.01,
-    [this.weaponType.handToHand] = 0.01,
+    [this.weaponType.arrow] = 0.0,
+    [this.weaponType.bolt] = 0.0,
+    [this.weaponType.handToHand] = 0.0,
+}
+-- The weapon's natural quality for disarming a target:
+-- very rough napkin scheme
+-- keeping in mind a heavy 2h axe can stagger the party with just a dagger
+this.targetWeaponChanceModifiers = {
+    [this.weaponType.shortBladeOneHand] = 1.0,
+    [this.weaponType.longBladeOneHand] = 2.0,
+    [this.weaponType.longBladeTwoClose] = 5.0,
+    [this.weaponType.bluntOneHand] = 1.0,
+    [this.weaponType.bluntTwoClose] = 2.0,
+    [this.weaponType.bluntTwoWide] = 2.0,
+    [this.weaponType.spearTwoWide] = 1.0,
+    [this.weaponType.axeOneHand] = 1.0,
+    [this.weaponType.axeTwoHand] = 7.0,
+    [this.weaponType.marksmanBow] = 1.0,
+    [this.weaponType.marksmanCrossbow] = 5.0,
+    [this.weaponType.marksmanThrown] = 1.0,
+    [this.weaponType.arrow] = 1.0,
+    [this.weaponType.bolt] = 1.0,
+    [this.weaponType.handToHand] = 1.0,
 }
 
 ----------------------------------------
 
--- this.weaponType_disarmToEnvironment = {
-    -- [tes3.weaponType.shortBladeOneHand] = false,
-    -- [tes3.weaponType.longBladeOneHand] = false,
-    -- [tes3.weaponType.longBladeTwoClose] = false,
-    -- [tes3.weaponType.bluntOneHand] = false,
-    -- [tes3.weaponType.bluntTwoClose] = false,
-    -- [tes3.weaponType.bluntTwoWide] = false,
-    -- [tes3.weaponType.spearTwoWide] = false,
-    -- [tes3.weaponType.axeOneHand] = false,
-    -- [tes3.weaponType.axeTwoHand] = false,
-    -- [tes3.weaponType.marksmanBow] = false,
-    -- [tes3.weaponType.marksmanCrossbow] = false,
-    -- [tes3.weaponType.marksmanThrown] = false,
-    -- [tes3.weaponType.arrow] = false,
-    -- [tes3.weaponType.bolt] = false,
-    -- [this.weaponType.handToHand] = true,
--- }
--- this.weaponType_disarmToInventory = {
-    -- [tes3.weaponType.shortBladeOneHand] = false,
-    -- [tes3.weaponType.longBladeOneHand] = false,
-    -- [tes3.weaponType.longBladeTwoClose] = false,
-    -- [tes3.weaponType.bluntOneHand] = false,
-    -- [tes3.weaponType.bluntTwoClose] = false,
-    -- [tes3.weaponType.bluntTwoWide] = false,
-    -- [tes3.weaponType.spearTwoWide] = false,
-    -- [tes3.weaponType.axeOneHand] = false,
-    -- [tes3.weaponType.axeTwoHand] = false,
-    -- [tes3.weaponType.marksmanBow] = true,
-    -- [tes3.weaponType.marksmanCrossbow] = true,
-    -- [tes3.weaponType.marksmanThrown] = true,
-    -- [tes3.weaponType.arrow] = true,
-    -- [tes3.weaponType.bolt] = true,
-    -- [this.weaponType.handToHand] = true,
--- }
 this.weaponTypeBlacklist = {
     [tes3.weaponType.shortBladeOneHand] = false,
     [tes3.weaponType.longBladeOneHand] = false,
@@ -189,55 +153,10 @@ this.weaponTypeBlacklist = {
 }
 
 ----------------------------------------
-function this.Log(level, message)
-    local levels = {
-        ["DEBUG"] = true,
-        ["ERROR"] = true,
-        ["INFO"] = true,
-        ["WARNING"] = true,
-    }
-    local prepend = this.mod
-    if (levels[level] == true) then
-        prepend = prepend .. ": " .. level
-    end
-    -- if (bit.band(where,1) == 1) then
-    mwse.log(string.format("[%s] %s",prepend, message))
-    -- end
-    -- if (bit.band(where,2) == 2) then
-        -- tes3.messageBox(string.format("[%s] %s",prepend, message))
-    -- end
-end
-
 function this.logDebug(message)
     if (config.debugMode == true) then
-        this.Log("DEBUG",message)
+        this.log:debug(message)
     end
 end
-function this.logError(message)
-        this.Log("ERROR",message)
-end
-function this.logInfo(message)
-        this.Log("INFO",message)
-end
-function this.logWarn(message)
-        this.Log("WARNING",message)
-end
--- function this.echoDebug(message)
-    -- if (config.debugMode == true) then
-        -- this.ECHO("DEBUG",3,message)
-    -- end
--- end
--- function this.messageboxDebug(message)
-    -- if (config.debugMode == true) then
-        -- this.ECHO("DEBUG",2,message)
-    -- end
--- end
--- function this.echoInfo(message)
-        -- this.ECHO("INFO",3,message)
--- end
--- function this.messageboxInfo(message)
-        -- this.ECHO("INFO",2,message)
--- end
-
 
 return this

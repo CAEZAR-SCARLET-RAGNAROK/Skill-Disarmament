@@ -9,29 +9,28 @@ event.register("modConfigReady", function()
 end)
 
 --------------------------------------
--- skillModule = require("OtherSkills.skillModule")
-if (common.skill.module == nil) then
-    common.logError("error loading skill module.")
-else
-    common.logInfo("loaded skill module.")
-end
 
 local function onSkillReady()
-    common.skill.module.registerSkill(
-        common.skill.id,
+    if (common.skillModule == nil) then
+        common.logError("skill module.")
+    else
+        common.logDebug("loaded skill module.")
+    end
+    common.skillModule.registerSkill(
+        common.skillId,
         {
-            name            =   config.skillDisarmament_Name or "Disarmament",
-            value           =   config.skillDisarmament_Value or 5,
-            progress        =   config.skillDisarmament_Progress or 0,
-            lvlCap          =   config.skillDisarmament_LvlCap or 100,
-            icon            =   config.skillDisarmament_Icon or "Icons/Caezar/Skills/Disarmament/skill.dds",
-            attribute       =   config.skillDisarmament_Attribute or tes3.attribute.agility,
-            description     =   config.skillDisarmament_Specialization or tes3.specialization.stealth,
-            specialization  =   config.skillDisarmament_Description or "Disarmament skill defines one's proficiency in which you are able to disarm assailaints and enemies. If using hand to hand, there is a chance to steal the target's weapon. If using a weapon, there is a chance to disarm the target, causing their weapon to fall to the ground.",
-            active          =   config.skillDisarmament_Active or "active",
+            name            =    "Disarmament",
+            value           =    5,
+            progress        =    0,
+            lvlCap          =    100,
+            icon            =    "Icons/Caezar/Skills/Disarmament/skill.dds",
+            attribute       =    tes3.attribute.agility,
+            specialization  =    tes3.specialization.stealth,
+            description     =    "Disarmament skill defines one's proficiency in which you are able to disarm assailaints and enemies. If using hand to hand, there is a chance to steal the target's weapon. If using a weapon, there is a chance to disarm the target, causing their weapon to fall to the ground.",
+            active          =    "active",
         }
     )
-    common.Skill = common.skill.module.getSkill("Caezar:Disarmament")
+    common.skill = common.skillModule.getSkill(tostring(common.skillId))
 end
 event.register("OtherSkills:Ready", onSkillReady)
 
@@ -40,7 +39,7 @@ require("Caezar.Skill-Disarmament.disarmament")
 
 ----------------------------------------
 local function initialized()
-    mwse.log("[" .. common.mod .." " .. common.version .. "] Initialized.")
+    common.log:info("Initialized.")
 end
 
 event.register("initialized", initialized)
