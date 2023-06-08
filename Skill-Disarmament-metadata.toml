@@ -1,19 +1,14 @@
 [package]
-    name = "Skill-Disarmament"
-    description = "A description of the mod"
-    homepage = ""
-    repository = "https://github.com/CAEZAR-SCARLET-RAGNAROK/Skill-Disarmament"
-    authors = ["Caezar"]
-    version = "0.19"
-    
+name = "Skill-Disarmament"
+description = ""
+homepage = ""
+repository = "https://github.com/CAEZAR-SCARLET-RAGNAROK/Skill-Disarmament"
+authors = [ "Caezar",]
+version = "0.19.3"
+
 [tools.mwse]
-    lua-mod = "Caezar.Skill-Disarmament"
-    load-order = 100
-    wait-until-initialize = false 
-    
-[dependencies]
-    assets = [
-        "Sound\\mySounds",
-        "Textures\\tex.dds",
-        "Meshes\\mesh.nif"
-]
+lua-mod = "Caezar.Skill-Disarmament"
+
+[dependencies.mods."Skills Module"]
+mwse-module = "OtherSkills"
+url = "https://www.nexusmods.com/morrowind/mods/46034?tab=files"
