@@ -193,145 +193,63 @@ local function onAttack(e)
         return
     end
 
-    local attackerIsPlayer
-    local targetIsPlayer
-
-    if (attackerMobile == tes3.mobilePlayer) then
-        attackerIsPlayer = true
-        targetIsPlayer = false
-    elseif (targetMobile == tes3.mobilePlayer) then
-        targetIsPlayer = true
-        attackerIsPlayer = false
-    end
-
-    local attackerMobile = e.mobile
-    local targetMobile = e.targetMobile
-    local speed = 0
-    local targetSpeed = 0
-
-    local attackerHasWeapon = true
-    local attackerWeapon
-    local attackerWeaponType
-    local attackerSkill
-    if (attackerMobile.readiedWeapon == nil) then
-        attackerHasWeapon = false
-        attackerWeapon = nil
-        attackerWeaponType = common.weaponType.handToHand
-        attackerSkill = attackerMobile.handToHand.current
-        speed = 1
-    else
-        if (common.weaponTypeBlacklist[attackerWeaponType]) then
-            return
-        end
-        attackerWeapon = attackerMobile.readiedWeapon
-        attackerWeaponType = attackerWeapon.object.type
-        attackerSkill = attackerMobile[common.skillMappings[attackerWeaponType]].current
-        speed = attackerWeapon.object.speed
-    end
-
-    local targetHasWeapon = true
-    local targetWeapon
-    local targetWeaponType
-    local targetSkill
-    if (e.targetMobile.readiedWeapon == nil) then
-        -- if (attackerHasWeapon == false) then
-            -- return --- h2h vs. h2h
-        -- end
-        targetHasWeapon = false
-        targetWeapon = nil
-        targetWeaponType = common.weaponType.handToHand
-        targetSkill = targetMobile.handToHand.current
-        targetSpeed = 1
-    else
-        targetWeapon = targetMobile.readiedWeapon
-        targetWeaponType = targetWeapon and targetWeapon.object.type
-        targetSkill = targetMobile[common.skillMappings[targetWeaponType]].current
-        targetSpeed = targetWeapon.object.speed
-    end
-
+    local atk = common.new_disarmParty(e.mobile)
+    local tgt = common.new_disarmParty(e.targetMobile)
 
     -- the original blacklist prevents archery/marksman weapon
     -- if (common.weaponTypeBlacklist_disarmToInventory[targetWeaponType]) then
         -- return
     -- end
 
-    local attackerDisarmSkillBonus = 0
-    local targetDisarmSkillBonus = 0
-
-    if (attackerMobile == tes3.mobilePlayer) then
-        if common.skill ~= nil then
-            attackerDisarmSkillBonus = common.skill.value * 0.667
-            -- at level 5 your bonus is 3.335
-            -- at level 25 your bonus is 16.67
-            -- at level 75 your bonus is 50.02
-        else
-common.logDebug(string.format("Couldn't access skill %s.", "Disarmament"))
-        end
-    elseif (targetMobile == tes3.mobilePlayer) then
-        if common.skill ~= nil then
-            targetDisarmSkillBonus = common.skill.value * 0.667
-        else
-common.logDebug(string.format("Couldn't access skill %s.", "Disarmament"))
-        end
-    end
-
     -- attacker --- --------------------
     --- the attacker's skill with their own weapon + their skill with the target's weapon
     --- See "common.lua" for more info.
-    attackerSkill = attackerSkill - (attackerSkill * common.targetWeaponChanceModifiers[attackerWeaponType] * 0.01)
-    local attackerWeaponSkill_ownWeapon = attackerSkill
+    atk.Skill = atk.Skill - (atk.Skill * common.weaponChanceModifiersAttack[atk.WeaponType] * 0.01)
+    atk.WeaponSkill_ownWeapon = atk.Skill
 
-    local attackerWeaponSkill_assailant
     if (targetHasWeapon) then
-        attackerWeaponSkill_assailant = attackerMobile[common.skillMappings[targetWeaponType]].current
+        atk.WeaponSkill_assailant = atk.Mobile[common.skillMappings[tgt.WeaponType]].current
     else
-        attackerWeaponSkill_assailant = attackerMobile.handToHand.current
+        atk.WeaponSkill_assailant = atk.Mobile.handToHand.current
     end
     -- Attackers dealing with their targets weapons:
-    --  bonus from attacker's own skill (or knowledge) with the target's weapon
+    --  bonus from atk.'s own skill (or knowledge) with the target's weapon
     --  and the weapons intrinsic character for being disarmed, being that the weapon is held by the target.
-    attackerWeaponSkill_assailant = attackerWeaponSkill_assailant + (attackerWeaponSkill_assailant * common.weaponChanceModifiers[targetWeaponType] * 0.01)
+    atk.WeaponSkill_assailant = atk.WeaponSkill_assailant + (atk.WeaponSkill_assailant * common.weaponChanceModifiers[tgt.WeaponType] * 0.01)
 
     -- target --- ----------------------
     --- the target's skill with their own weapon + their skill with the attacker's weapon
-    targetSkill = targetSkill - (targetSkill * common.weaponChanceModifiers[targetWeaponType] * 0.01)
-    local targetWeaponSkill_ownWeapon = targetSkill
+    tgt.Skill = tgt.Skill - (tgt.Skill * common.weaponChanceModifiers[tgt.WeaponType] * 0.01)
+    tgt.WeaponSkill_ownWeapon = tgt.Skill
 
-    local targetWeaponSkill_assailant
     if (attackerHasWeapon) then
-        targetWeaponSkill_assailant = targetMobile[common.skillMappings[attackerWeaponType]].current
+        tgt.WeaponSkill_assailant = tgt.Mobile[common.skillMappings[atk.WeaponType]].current
     else
-        targetWeaponSkill_assailant = targetMobile.handToHand.current
+        tgt.WeaponSkill_assailant = tgt.Mobile.handToHand.current
     end
     -- Targets dealing with their attackers weapons:
-    --  target's own skill with the attacker's weapon
-    --  and the attacker's weapons character for disarming targets, being that the weapon is held by the attacker.
-    targetWeaponSkill_assailant = targetWeaponSkill_assailant - (targetWeaponSkill_assailant * common.targetWeaponChanceModifiers[attackerWeaponType] * 0.01)
+    --  tgt.'s own skill with the attacker's weapon
+    --  and the attacker's weapons character for disarming tgt.s, being that the weapon is held by the attacker.
+    tgt.WeaponSkill_assailant = tgt.WeaponSkill_assailant - (tgt.WeaponSkill_assailant * common.weaponChanceModifiersAttack[atk.WeaponType] * 0.01)
 
     --- These chance modifiers add a small yet significant boost to each party's odds.
-    local attackerWeaponSkill = (attackerWeaponSkill_ownWeapon + attackerWeaponSkill_assailant) * 0.38
-    local targetWeaponSkill = (targetWeaponSkill_ownWeapon + targetWeaponSkill_assailant) * 0.38
+    atk.WeaponSkill = (atk.WeaponSkill_ownWeapon + atk.WeaponSkill_assailant) * 0.38
+    tgt.WeaponSkill = (tgt.WeaponSkill_ownWeapon + tgt.WeaponSkill_assailant) * 0.38
 
     --- Now we set up our luck bonuses. These are just like the <party>WeaponSkill modifiers.
-    -- The attacker's luck bonus
-    local attackerLuckBonus = math.random(math.random(-3.0,-18.0),math.random(3.0,18.0)) + (attackerMobile.luck.current * 1.0)
-    attackerLuckBonus = attackerLuckBonus * 0.25
-    -- with 35 luck the bonus is 7.35
-
-    -- The target's luck bonus
-    local targetLuckBonus = math.random(math.random(-3.0,-18.0),math.random(3.0,18.0)) + (targetMobile.luck.current * 1.0)
-    targetLuckBonus = targetLuckBonus * 0.25
+    atk.LuckBonus = (math.random(math.random(-3.0,-18.0),math.random(3.0,18.0)) + (atk.Mobile.luck.current * 1.0)) / 3
+    tgt.LuckBonus = (math.random(math.random(-3.0,-18.0),math.random(3.0,18.0)) + (tgt.Mobile.luck.current * 1.0)) / 3
 
     -- Put it all together
-    local attackerChance = (attackerSkill + attackerDisarmSkillBonus + attackerLuckBonus + attackerWeaponSkill) * 0.95
-    local targetChance = ( targetSkill +  targetDisarmSkillBonus +  targetLuckBonus + targetWeaponSkill) * 0.95
+    atk.Chance = (atk.Skill + atk.DisarmSkillBonus + atk.LuckBonus + atk.WeaponSkill) * 0.95
+    tgt.Chance = (tgt.Skill + tgt.DisarmSkillBonus + tgt.LuckBonus + tgt.WeaponSkill) * 0.95
 
     -- Base chance of 5% used for example below.
     local baseChance = config.disarmamentBaseChance or 5.0
     -- Skill ration based on attacker vs target skill levels.
     -- Ex: Target with 100 long blade vs Attacker with 25 axe = 4.0 ratio.
 
-    local skillRatio = (attackerChance) / (targetChance) * 1.0
+    local skillRatio = (atk.Chance) / (tgt.Chance) * 1.0
 
 
     -- Calculate modified base chance of disarm. 5% * 4.0 = 20% chance. Possible scenarios:
@@ -346,23 +264,13 @@ common.logDebug(string.format("Couldn't access skill %s.", "Disarmament"))
     -- Calculate chance. Caps at 60%.
     local chance = math.min(modifiedBaseChance, config.disarmamentMaxChance or 50.0)
 
-    attackerIsPlayer = false
-    targetIsPlayer = false
-    if (attackerMobile == tes3.mobilePlayer) then
-        attackerIsPlayer = true
-    else
-        targetIsPlayer = true
+    if (atk.isGod == true) then
+        chance = 100
+    elseif (tgt.isGod == true) then
+        chance = 0
     end
 
-    if (config.enableGodMode) then
-        if (attackerIsPlayer) then
-            chance = 100
-        else
-            chance = 0
-        end
-    end
-
-common.logDebug(string.format("--- CURRENT STATE ---\n\t[God mode is %s! player is %s!]\n\t[Overall Judgement] Ratio: %s, Disarm Chance: %s\n\t[Attacker Stats] Weapon Skill: %s, Disarm Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Target Stats] Weapon Skill: %s, Block Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Attacker: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s\n\t[Target: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s", common.__yesno_enabled[config.enableGodMode], common.__yesno_attacking[attackerIsPlayer], skillRatio, chance, attackerWeaponSkill, attackerChance, attackerDisarmSkillBonus, attackerLuckBonus, targetWeaponSkill, targetChance, targetDisarmSkillBonus, targetLuckBonus, common.weaponClass[attackerWeaponType], attackerWeaponSkill_ownWeapon, common.weaponClass[targetWeaponType], attackerWeaponSkill_assailant, common.weaponClass[targetWeaponType], targetWeaponSkill_ownWeapon, common.weaponClass[attackerWeaponType], targetWeaponSkill_assailant))
+common.logDebug(string.format("--- CURRENT STATE ---\n\t[God mode is %s! player is %s!]\n\t[Overall Judgement] Ratio: %s, Disarm Chance: %s\n\t[Attacker Stats] Weapon Skill: %s, Weap speed: %s, Disarm Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Target Stats] Weapon Skill: %s, Weap speed: %s, Block Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Attacker: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s\n\t[Target: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s", common.__yesno_enabled[config.enableGodMode], common.__yesno_attacking[atk.isPlayer], skillRatio, chance, atk.WeaponSkill, atk.Speed, atk.Chance, atk.DisarmSkillBonus, atk.LuckBonus, tgt.WeaponSkill, tgt.Speed, tgt.Chance, tgt.DisarmSkillBonus, tgt.LuckBonus, common.weaponClass[atk.WeaponType], atk.WeaponSkill_ownWeapon, common.weaponClass[tgt.WeaponType], atk.WeaponSkill_assailant, common.weaponClass[tgt.WeaponType], tgt.WeaponSkill_ownWeapon, common.weaponClass[atk.WeaponType], tgt.WeaponSkill_assailant))
 
     if (math.random(100) > chance) then
         return
@@ -370,12 +278,11 @@ common.logDebug(string.format("--- CURRENT STATE ---\n\t[God mode is %s! player 
 
     -- We hit someone!
     -- local duration = 2 * speed
-    speed = (speed + targetSpeed) / 3
-    local duration = speed
+    local duration = (atk.Speed + tgt.Speed) / 3
     timer.start({
         duration = duration,
         callback = function()
-            disarm(attackerMobile, targetMobile, attackerHasWeapon)
+            disarm(atk.Mobile, tgt.Mobile, atk.HasWeapon)
         end
     })
 end

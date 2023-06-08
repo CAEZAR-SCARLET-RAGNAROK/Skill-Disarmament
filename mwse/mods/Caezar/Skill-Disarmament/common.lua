@@ -6,7 +6,7 @@ local this = {}
 ----------------------------------------
 
 this.mod = "Skill-Disarmament"
-this.version = "0.19.3"
+this.version = "0.19.4"
 
 this.skill = nil
 this.skillModule = include("OtherSkills.skillModule")
@@ -38,6 +38,62 @@ this.__yesno_enabled = {
     [true] = "Enabled",
     [false] = "Disabled",
 }
+
+function this.new_disarmParty(mobile)
+    local p = {}
+    p.Mobile = mobile
+    p.isPlayer = false
+    p.isGod = false
+
+    if (mobile == tes3.mobilePlayer) then
+        p.isPlayer = true
+        if (config.enableGodMode == true) then
+            p.isGod = true
+        end
+    end
+
+    p.Speed = 0
+
+    p.HasWeapon = false
+    p.Weapon = nil
+    p.WeaponType = nil
+    p.Skill = nil
+    if (mobile.readiedWeapon == nil) then
+        p.WeaponType = this.weaponType.handToHand
+        p.Skill = mobile.handToHand.current
+        p.Speed = 1
+    else
+        if (this.weaponTypeBlacklist[p.WeaponType]) then
+            return
+        end
+        p.HasWeapon = true
+        p.Weapon = mobile.readiedWeapon
+        p.WeaponType = p.Weapon.object.type
+        p.Skill = mobile[this.skillMappings[p.WeaponType]].current
+        p.WeaponSkill = nil
+        p.WeaponSkill_ownWeapon = nil
+        p.WeaponSkill_assailant = nil
+        p.Speed = p.Weapon.object.speed
+    end
+
+    p.DisarmSkillBonus = 0
+    if (p.isPlayer == true) then
+        if (this.skill) then
+            p.DisarmSkillBonus = this.skill.value * 0.667
+            -- at level 5 your bonus is 3.335
+            -- at level 25 your bonus is 16.67
+            -- at level 75 your bonus is 50.02
+        else
+this.log:error(string.format("Couldn't access skill %s.", "Disarmament"))
+        end
+    end
+
+    p.LuckBonus = nil
+    p.Chance = nil
+
+
+    return p
+end
 
 ----------------------------------------
 
@@ -114,7 +170,7 @@ this.weaponChanceModifiers = {
 -- The weapon's natural quality for disarming a target:
 -- very rough napkin scheme
 -- keeping in mind a heavy 2h axe can stagger the party with just a dagger
-this.targetWeaponChanceModifiers = {
+this.weaponChanceModifiersAttack = {
     [this.weaponType.shortBladeOneHand] = 1.0,
     [this.weaponType.longBladeOneHand] = 2.0,
     [this.weaponType.longBladeTwoClose] = 5.0,

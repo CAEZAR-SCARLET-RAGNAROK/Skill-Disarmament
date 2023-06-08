@@ -90,7 +90,7 @@ template:saveOnClose("Skill-Disarmament-Caezar", config)
 
 local page = template:createSideBarPage{
     label = "Settings Sidebar",
-    description = "This is Skill-Disarmament. (From Operator Jack's Simple Combat Mechanics - Disarmament features. I added a Skill Module skill for it plus a settings page to control its details and some more features and improvements.)",
+    description = "This is Skill-Disarmament. (From Operator Jack's Simple Combat Mechanics - Disarmament features. I added its details and some more features and improvements.)",
 }
 
 createGeneralCategory(page)
