@@ -1,0 +1,19 @@
+[package]
+    name = "Skill-Disarmament"
+    description = "A description of the mod"
+    homepage = ""
+    repository = "https://github.com/CAEZAR-SCARLET-RAGNAROK/Skill-Disarmament"
+    authors = ["Caezar"]
+    version = "0.19"
+    
+[tools.mwse]
+    lua-mod = "Caezar.Skill-Disarmament"
+    load-order = 100
+    wait-until-initialize = false 
+    
+[dependencies]
+    assets = [
+        "Sound\\mySounds",
+        "Textures\\tex.dds",
+        "Meshes\\mesh.nif"
+]
