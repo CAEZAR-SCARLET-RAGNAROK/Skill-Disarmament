@@ -1,10 +1,10 @@
 [package]
 name = "Skill-Disarmament"
-description = ""
+description = "This is Skill-Disarmament. New ability to disarm your enemies. It is based on work by Operator Jack."
 homepage = ""
 repository = "https://github.com/CAEZAR-SCARLET-RAGNAROK/Skill-Disarmament"
 authors = [ "Caezar",]
-version = "0.19.4"
+version = "0.19.5"
 
 [tools.mwse]
 lua-mod = "Caezar.Skill-Disarmament"
