@@ -6,7 +6,7 @@ local this = {}
 ----------------------------------------
 
 this.mod = "Skill-Disarmament"
-this.version = "0.19.4"
+this.version = "0.19.5"
 
 this.skill = nil
 this.skillModule = include("OtherSkills.skillModule")
@@ -16,20 +16,20 @@ this.conlog = logger.new{
     name = this.mod,
     logLevel = "INFO",
     logToConsole = true,
-    includeTimestamp = true,
+    includeTimestamp = false,
 }
 this.log = logger.new{
     name = this.mod,
-    logLevel = "DEBUG",
+    logLevel = config.loggerLevel or "INFO",
     logToConsole = false,
     includeTimestamp = false,
 }
 
 ----------------------------------------
-this.__yesno = {
-    [true] = "Yes",
-    [false] = "No",
-}
+-- this.__yesno = {
+    -- [true] = "Yes",
+    -- [false] = "No",
+-- }
 this.__yesno_attacking = {
     [true] = "attacking",
     [false] = "defending",
@@ -39,9 +39,73 @@ this.__yesno_enabled = {
     [false] = "Disabled",
 }
 
-function this.new_disarmParty(mobile)
+--- wlog - WRITE LOG
+function this.wlog(level, message)
+    local levels = {
+        ["TRACE"] = true,
+        ["DEBUG"] = true,
+        ["INFO"] = true,
+        ["WARN"] = true,
+        ["ERROR"] = true,
+        ["NONE"] = true,
+        ["QUIET"] = true,
+    }
+    local log = this.log
+    if (log == nil or level == nil or config.loggerLevel == nil or not levels[level]) then
+        --- throw error
+        return
+    elseif (config.loggerLevel == "QUIET") then
+        return
+    end
+    levels = {
+        ["TRACE"] = function() log:trace(message) end,
+        ["DEBUG"] = function() log:debug(message) end,
+        ["INFO"] = function() log:info(message) end,
+        ["WARN"] =  function() log:warn(message) end,
+        ["ERROR"] = function() log:error(message) end,
+        ["NONE"] =  function() log:none(message) end,
+        ["QUIET"] =  function() --[[ nop ]] end,
+    }
+    if (config.loggerLevel == level) then
+        levels[level]()
+    end
+end
+
+function this.getWeapons(mobile)
+    local weapons = {
+        id = nil,
+        type = this.weaponType.handToHand,
+        skill = mobile.handToHand.current,
+        speed = 1.0,
+        has = false,
+    }
+    if (mobile.readiedWeapon) then
+        weapons.id =    mobile.readiedWeapon
+        weapons.type =  weapons.id.object.type
+
+        weapons.skill = mobile[this.skillMappings[weapons.type]].current
+        weapons.speed = weapons.id.object.speed
+        weapons.has = true
+        if (this.weaponTypeBlacklist[weapons.type] == true) then
+            this.wlog("DEBUG","weap type is blacklisted")
+            return nil
+        end
+    end
+    return weapons
+end
+
+-- @param mods { own = {...}, assailant = {...} }
+-- @param weapons { own = { id, type, skill, speed, has }, assailant = { id, type, skill, speed, has } }
+function this.new_disarmParty(mobile, mods, weapons)
     local p = {}
-    p.Mobile = mobile
+
+    --- validate our handle
+    p.Mobile = tes3.makeSafeObjectHandle(mobile)
+    if (p.Mobile:valid() == false) then
+        this.log:error("invalid handle")
+        return nil
+    end
+
     p.isPlayer = false
     p.isGod = false
 
@@ -52,29 +116,12 @@ function this.new_disarmParty(mobile)
         end
     end
 
-    p.Speed = 0
+    p.Skill = 0
 
-    p.HasWeapon = false
-    p.Weapon = nil
-    p.WeaponType = nil
-    p.Skill = nil
-    if (mobile.readiedWeapon == nil) then
-        p.WeaponType = this.weaponType.handToHand
-        p.Skill = mobile.handToHand.current
-        p.Speed = 1
-    else
-        if (this.weaponTypeBlacklist[p.WeaponType]) then
-            return
-        end
-        p.HasWeapon = true
-        p.Weapon = mobile.readiedWeapon
-        p.WeaponType = p.Weapon.object.type
-        p.Skill = mobile[this.skillMappings[p.WeaponType]].current
-        p.WeaponSkill = nil
-        p.WeaponSkill_ownWeapon = nil
-        p.WeaponSkill_assailant = nil
-        p.Speed = p.Weapon.object.speed
-    end
+    local skill = {
+        own = weapons.own.skill,
+        assailant = weapons.assailant.skill,
+    }
 
     p.DisarmSkillBonus = 0
     if (p.isPlayer == true) then
@@ -88,9 +135,21 @@ this.log:error(string.format("Couldn't access skill %s.", "Disarmament"))
         end
     end
 
-    p.LuckBonus = nil
-    p.Chance = nil
+    --- the party's skill with their own weapon + their skill with their assailant's weapon
+    --- See "weaponChanceModifiers" table for more info.
+    skill.own = skill.own - (skill.own * mods.own[weapons.own.type] * 0.01)
+    -- maybe check for combat state or enemy detection, if the tgt party is unaware he is more vulnerable.
+    skill.assailant = skill.assailant + (skill.assailant * mods.assailant[weapons.assailant.type] * 0.01)
 
+    --- These chance modifiers add a small yet significant boost to each party's odds.
+    p.Skill = (skill.own + skill.assailant) * 0.38
+
+    --- Now we set up our luck bonuses. These are just like the <party>WeaponSkill modifiers.
+    -- reward ppl leveling luck ;p
+    p.LuckBonus = (math.random(-25.0,25.0) + p.Mobile.luck.current) / 2.15
+
+    -- Put it all together
+    p.Chance = (p.Skill + p.DisarmSkillBonus + p.LuckBonus) * 0.95
 
     return p
 end
@@ -209,10 +268,6 @@ this.weaponTypeBlacklist = {
 }
 
 ----------------------------------------
-function this.logDebug(message)
-    if (config.debugMode == true) then
-        this.log:debug(message)
-    end
-end
+
 
 return this

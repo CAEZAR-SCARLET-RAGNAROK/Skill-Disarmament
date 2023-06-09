@@ -7,8 +7,8 @@ local defaultConfig = {
     disarmamentSearchDistance = 256 + 50,
 
     -- General Settings
-    debugMode = false,
-    enableGodMode = nil,
+    loggerLevel = "INFO",
+    enableGodMode = false,
 }
 
 return mwse.loadConfig("Skill-Disarmament-Caezar") or defaultConfig

@@ -5,22 +5,20 @@ local function createGeneralCategory(page)
         label = "General Settings"
     }
 
-    -- Create option to capture debug mode.
-    category:createOnOffButton{
-        label = "Enable Debug Mode",
-        description = "Use this option to enable debug mode.",
-        variable = mwse.mcm.createTableVariable{
-            id = "debugMode",
-            table = config
-        }
-    }
-
-    category:createOnOffButton{
-        label = "Enable God Mode (for player)",
-        description = "Enables God Mode - you will always disarm your targets and be protected attackers from disarming you.",
-        defaultSetting = config.enableGodMode or false,
-        variable = mwse.mcm.createTableVariable{
-            id = "enableGodMode",
+    page:createDropdown{
+        label = "Logger",
+        description = "Keep on INFO unless you see technical data in the log.",
+        options = {
+            { label = "INFO",   value = "INFO" },
+            { label = "DEBUG",  value = "DEBUG" },
+            { label = "ERROR",  value = "ERROR" },
+            { label = "WARN",   value = "WARN" },
+            { label = "TRACE",  value = "TRACE" },
+            { label = "NONE",   value = "NONE" },
+            { label = "QUIET",  value = "QUIET" }, -- quiet mode
+        },
+        variable =  mwse.mcm.createTableVariable{
+            id = "loggerLevel",
             table = config
         }
     }
@@ -34,10 +32,19 @@ local function createDisarmamentCategory(page)
     }
 
     category:createOnOffButton{
-        label = "Enable Disarmament",
-        description = "Use this option to enable disarmament. This will add a disarming mechanic which allows the PC and NPCs to disarm each other. If using hand to hand, there is a chance to steal the target's weapon. If using a weapon, there is a chance to disarm the target, causing them to drop their weapon to the ground. Chances are based on the attacker and target's skills in their respective weapon.",
+        label = "Enable Skill-Disarmament",
+        description = "Activate or deactivate the mod.",
         variable = mwse.mcm.createTableVariable{
             id = "enableDisarmament",
+            table = config
+        }
+    }
+
+    category:createOnOffButton{
+        label = "Enable God Mode",
+        description = "Enables God Mode - you will always disarm your targets and be protected attackers from disarming you.",
+        variable = mwse.mcm.createTableVariable{
+            id = "enableGodMode",
             table = config
         }
     }
@@ -90,7 +97,7 @@ template:saveOnClose("Skill-Disarmament-Caezar", config)
 
 local page = template:createSideBarPage{
     label = "Settings Sidebar",
-    description = "This is Skill-Disarmament. (From Operator Jack's Simple Combat Mechanics - Disarmament features. I added its details and some more features and improvements.)",
+    description = "This is Skill-Disarmament. (From Operator Jack's Simple Combat Mechanics - Disarmament features. I added immersive details and some more features and improvements.)",
 }
 
 createGeneralCategory(page)
