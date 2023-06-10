@@ -4,7 +4,7 @@ description = "This is Skill-Disarmament. New ability to disarm your enemies. It
 homepage = ""
 repository = "https://github.com/CAEZAR-SCARLET-RAGNAROK/Skill-Disarmament"
 authors = [ "Caezar",]
-version = "0.19.5"
+version = "0.20.0"
 
 [tools.mwse]
 lua-mod = "Caezar.Skill-Disarmament"
