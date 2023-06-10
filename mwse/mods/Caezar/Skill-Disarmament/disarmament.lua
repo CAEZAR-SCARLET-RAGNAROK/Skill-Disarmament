@@ -23,11 +23,13 @@ local function getRandomizedPosition(position, isShort)
     return tes3vector3.new(x,y,z)
 end
 
-local function disarmHandToHand(attackerMobile, targetMobile)
-    local weapon = targetMobile.readiedWeapon
+local function disarmHandToHand(attackerMobile, targetMobile, weapons)
+    if (weapons.tgt.has == false) then
+        return -- how did we get here?
+    end
 
-    local weaponObject = weapon.object
-    local weaponItemData = weapon.itemData
+    local weaponObject = weapons.tgt.id.object
+    local weaponItemData = weapons.tgt.id.itemData
 
     local attackerLuckBonus = math.random(-20,20) + (attackerMobile.luck.current)
     local targetLuckBonus = math.random(-20,20) + (targetMobile.luck.current)
@@ -46,7 +48,7 @@ local function disarmHandToHand(attackerMobile, targetMobile)
         randomhalf = randomhalf - luckModifier
     end
 
-common.log:debug(string.format("[Luck Stats] randombit: %s, randomhalf: %s, luckModifier: %s", randombit, randomhalf, luckModifier))
+common.log:debug("[Luck Stats] randombit: %s, randomhalf: %s, luckModifier: %s", randombit, randomhalf, luckModifier)
     --- decide to take the weapon using luck, we are still disarming so
     --- if this falls through, the weapon will just fall to the ground
     if (randombit == 1 and randomhalf <= 255) then
@@ -93,11 +95,16 @@ common.log:debug(string.format("[Luck Stats] randombit: %s, randomhalf: %s, luck
     end
 end
 
-local function disarmWeapon(targetMobile)
-    local weaponObject = weapon.object
-    local weaponItemData = weapon.itemData
+local function disarmWeapon(targetMobile, weapons)
+    if (weapons.tgt.has == false) then
+        return -- how did we get here?
+    end
+
+    local weaponObject = weapons.tgt.id.object
+    local weaponItemData = weapons.tgt.id.itemData
+
     local isShortWeapon = false
-    if (weapon.object.type == tes3.weaponType.shortBladeOneHand) then
+    if (weapons.type == tes3.weaponType.shortBladeOneHand) then
         isShortWeapon = true
     end
 
@@ -128,29 +135,32 @@ local function disarmWeapon(targetMobile)
     end
 end
 
-local function disarm(atk, tgt)
-    if (tgt.Mobile.readiedWeapon == nil) then
+local function disarm(atk, tgt, weapons)
+    if (weapons.tgt.has == false) then
         if (tgt.Mobile.fatigue.current >= 0.0) then
-            tgt.Mobile.fatigue.current = 0.0
+            tgt.Mobile.fatigue.current = -150.0
         else
-            -- double if they're already down
-            tgt.Mobile.fatigue.current = tgt.Mobile.fatigue.current - 100.0
+            tgt.Mobile.fatigue.current = tgt.Mobile.fatigue.current - 150.0
         end
-        tgt.Mobile.fatigue.current = tgt.Mobile.fatigue.current - 100.0
-    elseif (atk.HasWeapon) then
-        disarmWeapon(tgt.Mobile)
+common.log:debug("[disarm - h2h] target's current fatigue: %s", tgt.Mobile.fatigue.current)
+    elseif (weapons.atk.has) then
+        disarmWeapon(tgt.Mobile, weapons)
+common.log:debug("[disarm - weapon] target's current weapon: %s", tgt.readiedWeapon)
     else
-        disarmHandToHand(atk.Mobile, tgt.Mobile)
+        disarmHandToHand(atk.Mobile, tgt.Mobile, weapons)
+common.log:debug("[disarm - weapon] target's current weapon: %s", tgt.readiedWeapon)
     end
 
     -- Progress skill
-    if (atk.Mobile == tes3.mobilePlayer) then
+    if (atk.isPlayer) then
         common.skill:progressSkill(config.skillDisarmament_ProgressExp or 10)
-        common.wlog("DEBUG",string.format("Skill progression! (current: %s)", common.skill.progress))
+common.log:debug("Skill progression! (current: %s)", common.skill.progress)
     end
 end
 
 local function onAttack(e)
+    common.log:setLogLevel(config.loggerLevel)
+
     if (config.enableDisarmament == false) then
         return
 
@@ -182,14 +192,14 @@ local function onAttack(e)
     if (not atk or not tgt) then return --[[ throw error ]] end
 
     -- Ignore proximity bounds for marksman weapons
-    if (common.weaponClass[atk.WeaponType] ~= "marksman") then
+    if (common.weaponClass[weapons.atk.type] ~= "marksman") then
         if (e.targetReference.position:distance(e.reference.position) > config.disarmamentSearchDistance) then
             return
         end
     end
 
     -- the original blacklist prevents archery/marksman weapon
-    -- if (common.weaponTypeBlacklist[atk.WeaponType]) then
+    -- if (common.weaponTypeBlacklist[weapons.atk.type]) then
         -- return
     -- end
 
@@ -219,32 +229,31 @@ local function onAttack(e)
         chance = 0
     end
 
--- common.wlog("DEBUG",string.format("--- CURRENT STATE ---\n\t[God mode is %s! player is %s!]\n\t[Overall Judgement] Ratio: %s, Disarm Chance: %s\n\t[Attacker Stats] Weapon Skill: %s, Weap speed: %s, Disarm Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Target Stats] Weapon Skill: %s, Weap speed: %s, Block Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Attacker: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s\n\t[Target: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s", common.__yesno_enabled[config.enableGodMode], common.__yesno_attacking[atk.isPlayer], skillRatio, chance, atk.WeaponSkill, weapons.atk.speed, atk.Chance, atk.DisarmSkillBonus, atk.LuckBonus, tgt.WeaponSkill, weapons.tgt.speed, tgt.Chance, tgt.DisarmSkillBonus, tgt.LuckBonus, common.weaponClass[atk.WeaponType], atk.WeaponSkill_ownWeapon, common.weaponClass[tgt.WeaponType], atk.WeaponSkill_assailant, common.weaponClass[tgt.WeaponType], tgt.WeaponSkill_ownWeapon, common.weaponClass[atk.WeaponType], tgt.WeaponSkill_assailant))
-common.wlog("DEBUG",string.format("--- CURRENT STATE ---\t[God mode is %s! player is %s!]\t[Overall Judgement] Ratio: %s, Disarm Chance: %s", common.__yesno_enabled[config.enableGodMode], common.__yesno_attacking[atk.isPlayer], skillRatio, chance))
+-- common.log:debug("--- CURRENT STATE ---\n\t[God mode is %s! player is %s!]\n\t[Overall Judgement] Ratio: %s, Disarm Chance: %s\n\t[Attacker Stats] Weapon Skill: %s, Weap speed: %s, Disarm Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Target Stats] Weapon Skill: %s, Weap speed: %s, Block Chance: %s, Skill-Disarm Bonus: %s, Luck Bonus: %s\n\t[Attacker: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s\n\t[Target: Weapon Skill stats] own weapon class: %s, own weapon: %s, enemy's weapon class: %s, enemy's weapon: %s", common.__yesno_enabled[config.enableGodMode], common.__yesno_attacking[atk.isPlayer], skillRatio, chance, atk.WeaponSkill, weapons.atk.speed, atk.Chance, atk.DisarmSkillBonus, atk.LuckBonus, tgt.WeaponSkill, weapons.tgt.speed, tgt.Chance, tgt.DisarmSkillBonus, tgt.LuckBonus, common.weaponClass[weapons.atk.type], atk.WeaponSkill_ownWeapon, common.weaponClass[weapons.tgt.type], atk.WeaponSkill_assailant, common.weaponClass[weapons.tgt.type], tgt.WeaponSkill_ownWeapon, common.weaponClass[weapons.atk.type], tgt.WeaponSkill_assailant))
+common.log:debug("--- CURRENT STATE ---\t[God mode is %s! player is %s!]\t[Overall Judgement] Ratio: %s, Disarm Chance: %s", common.__yesno_enabled[config.enableGodMode], common.__yesno_attacking[atk.isPlayer], skillRatio, chance)
 
     if (math.random(100) > chance) then
         return
     end
 
-    -- atk.Mobile = tes3.makeSafeObjectHandle(atk.Mobile)
-    -- tgt.Mobile = tes3.makeSafeObjectHandle(tgt.Mobile)
+    local atkMobile = tes3.makeSafeObjectHandle(atk.Mobile)
+    local tgtMobile = tes3.makeSafeObjectHandle(tgt.Mobile)
 
-    if (atk.Mobile:valid() == true and tgt.Mobile:valid() == true) then
-
-        -- We hit someone!
-        -- local duration = 2 * speed
-        local duration = (2 * weapons.atk.speed) * 0.667
-        timer.start({
-            duration = duration,
-            callback = function()
-                disarm(atk, tgt)
-            end
-        })
-
-    else
+    if (atkMobile:valid() and tgtMobile:valid()) then
         -- throw error
-        common.log:error("invalid handle")
+common.log:error("invalid handle")
         return
     end
+
+    -- We hit someone!
+    -- local duration = 2 * speed
+    local duration = (weapons.atk.speed)
+    timer.start({
+        duration = duration,
+        callback = function()
+            disarm(atk, tgt, weapons)
+        end
+    })
+
 end
 event.register("attack", onAttack)

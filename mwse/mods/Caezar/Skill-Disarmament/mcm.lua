@@ -1,3 +1,4 @@
+local common = require("Caezar.Skill-Disarmament.common")
 local config = require("Caezar.Skill-Disarmament.config")
 
 local function createGeneralCategory(page)
@@ -7,15 +8,14 @@ local function createGeneralCategory(page)
 
     page:createDropdown{
         label = "Logger",
-        description = "Keep on INFO unless you see technical data in the log.",
+        description = "Keep on INFO unless you wish to see extra data in the log.",
         options = {
-            { label = "INFO",   value = "INFO" },
-            { label = "DEBUG",  value = "DEBUG" },
-            { label = "ERROR",  value = "ERROR" },
-            { label = "WARN",   value = "WARN" },
-            { label = "TRACE",  value = "TRACE" },
-            { label = "NONE",   value = "NONE" },
-            { label = "QUIET",  value = "QUIET" }, -- quiet mode
+            { label = "TRACE",  value = "TRACE" }, -- 1
+            { label = "DEBUG",  value = "DEBUG" }, -- 2
+            { label = "INFO",   value = "INFO" }, -- 3
+            { label = "WARN",   value = "WARN" }, -- 4
+            { label = "ERROR",  value = "ERROR" }, -- 5
+            { label = "NONE",   value = "NONE" }, -- 6 quiet mode
         },
         variable =  mwse.mcm.createTableVariable{
             id = "loggerLevel",
@@ -30,6 +30,12 @@ local function createDisarmamentCategory(page)
     local category = page:createCategory{
         label = "Disarmament Settings"
     }
+
+if (not common.skillModule) then
+    local category = page:createCategory{
+        label = "--- WARNING ---\nskill module not loaded. features may not work as expected."
+    }
+end
 
     category:createOnOffButton{
         label = "Enable Skill-Disarmament",

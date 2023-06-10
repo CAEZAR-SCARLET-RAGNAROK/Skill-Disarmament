@@ -1,19 +1,18 @@
 --[[
+
+I am Caezar, hello. I made this thing for some game.
+
     This is Skill-Disarmament. New ability to disarm your enemies. It is based on work by Operator Jack.
 ]]
 local common = require("Caezar.Skill-Disarmament.common")
 local config = require("Caezar.Skill-Disarmament.config")
-
-----------------------------
-
--- Register the mod config menu (using EasyMCM library).
-event.register("modConfigReady", function() require("Caezar.Skill-Disarmament.mcm") end)
 
 --------------------------------------
 
 local function onSkillReady()
     if (not common.skillModule) then
         common.log:error("loading skill module.")
+        return
     end
     common.skillModule.registerSkill(
         common.skillId,
@@ -36,13 +35,17 @@ local function onSkillReady()
 end
 event.register("OtherSkills:Ready", onSkillReady)
 
+----------------------------
+
+-- Register the mod config menu (using EasyMCM library).
+event.register("modConfigReady", function() require("Caezar.Skill-Disarmament.mcm") end)
+
 ----------------------------------------
 require("Caezar.Skill-Disarmament.disarmament")
 
 ----------------------------------------
 local function initialized()
     common.log:info("Initialized.")
-    common.wlog("KELJF","Initialized.")
 end
 
 event.register("initialized", initialized)

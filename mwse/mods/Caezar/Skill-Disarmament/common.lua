@@ -6,18 +6,12 @@ local this = {}
 ----------------------------------------
 
 this.mod = "Skill-Disarmament"
-this.version = "0.19.5"
+this.version = "0.20.0"
 
 this.skill = nil
 this.skillModule = include("OtherSkills.skillModule")
 this.skillId = "Caezar:Disarmament"
 
-this.conlog = logger.new{
-    name = this.mod,
-    logLevel = "INFO",
-    logToConsole = true,
-    includeTimestamp = false,
-}
 this.log = logger.new{
     name = this.mod,
     logLevel = config.loggerLevel or "INFO",
@@ -39,38 +33,6 @@ this.__yesno_enabled = {
     [false] = "Disabled",
 }
 
---- wlog - WRITE LOG
-function this.wlog(level, message)
-    local levels = {
-        ["TRACE"] = true,
-        ["DEBUG"] = true,
-        ["INFO"] = true,
-        ["WARN"] = true,
-        ["ERROR"] = true,
-        ["NONE"] = true,
-        ["QUIET"] = true,
-    }
-    local log = this.log
-    if (log == nil or level == nil or config.loggerLevel == nil or not levels[level]) then
-        --- throw error
-        return
-    elseif (config.loggerLevel == "QUIET") then
-        return
-    end
-    levels = {
-        ["TRACE"] = function() log:trace(message) end,
-        ["DEBUG"] = function() log:debug(message) end,
-        ["INFO"] = function() log:info(message) end,
-        ["WARN"] =  function() log:warn(message) end,
-        ["ERROR"] = function() log:error(message) end,
-        ["NONE"] =  function() log:none(message) end,
-        ["QUIET"] =  function() --[[ nop ]] end,
-    }
-    if (config.loggerLevel == level) then
-        levels[level]()
-    end
-end
-
 function this.getWeapons(mobile)
     local weapons = {
         id = nil,
@@ -87,7 +49,7 @@ function this.getWeapons(mobile)
         weapons.speed = weapons.id.object.speed
         weapons.has = true
         if (this.weaponTypeBlacklist[weapons.type] == true) then
-            this.wlog("DEBUG","weap type is blacklisted")
+            this.log:debug("weap type is blacklisted")
             return nil
         end
     end
@@ -99,12 +61,7 @@ end
 function this.new_disarmParty(mobile, mods, weapons)
     local p = {}
 
-    --- validate our handle
-    p.Mobile = tes3.makeSafeObjectHandle(mobile)
-    if (p.Mobile:valid() == false) then
-        this.log:error("invalid handle")
-        return nil
-    end
+    p.Mobile = mobile
 
     p.isPlayer = false
     p.isGod = false
@@ -131,7 +88,7 @@ function this.new_disarmParty(mobile, mods, weapons)
             -- at level 25 your bonus is 16.67
             -- at level 75 your bonus is 50.02
         else
-this.log:error(string.format("Couldn't access skill %s.", "Disarmament"))
+this.log:error("Couldn't access skill %s.", this.skillId)
         end
     end
 
