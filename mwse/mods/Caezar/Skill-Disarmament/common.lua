@@ -6,7 +6,7 @@ local this = {}
 ----------------------------------------
 
 this.mod = "Skill-Disarmament"
-this.version = "0.20.0"
+this.version = "0.20.1"
 
 this.skill = nil
 this.skillModule = include("OtherSkills.skillModule")
@@ -39,6 +39,7 @@ function this.getWeapons(mobile)
         type = this.weaponType.handToHand,
         skill = mobile.handToHand.current,
         speed = 1.0,
+        reach = 1.0, -- same reach as a dagger
         has = false,
     }
     if (mobile.readiedWeapon) then
@@ -47,9 +48,10 @@ function this.getWeapons(mobile)
 
         weapons.skill = mobile[this.skillMappings[weapons.type]].current
         weapons.speed = weapons.id.object.speed
+        weapons.reach = weapons.id.object.reach
         weapons.has = true
         if (this.weaponTypeBlacklist[weapons.type] == true) then
-            this.log:debug("weap type is blacklisted")
+            this.log:debug("weap type (%s) is blacklisted", weapons.type)
             return nil
         end
     end
@@ -57,7 +59,7 @@ function this.getWeapons(mobile)
 end
 
 -- @param mods { own = {...}, assailant = {...} }
--- @param weapons { own = { id, type, skill, speed, has }, assailant = { id, type, skill, speed, has } }
+-- @param weapons { own = { id, type, skill, speed, reach, has }, assailant = { id, type, skill, speed, reach, has } }
 function this.new_disarmParty(mobile, mods, weapons)
     local p = {}
 
